@@ -1,0 +1,51 @@
+server:
+  port: ${PORT:8000}
+spring:
+  application:
+    name: teaching-affairs-management
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:test}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${DB_USER:ruoyi}
+    password: ${DB_PASSWORD:password}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+      connection-init-sql: SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 1s
+
+app:
+  cache:
+    enabled: ${CACHE_ENABLED:true}
+    ttl-seconds: ${CACHE_TTL_SECONDS:300}
+    redis-backoff-seconds: ${CACHE_REDIS_BACKOFF_SECONDS:30}
+  backup:
+    enabled: ${BACKUP_ENABLED:true}
+    script-path: ${BACKUP_SCRIPT_PATH:}
+    windows-script-path: ${BACKUP_WINDOWS_SCRIPT_PATH:scripts/backup_database.ps1}
+    unix-script-path: ${BACKUP_UNIX_SCRIPT_PATH:scripts/backup_database.sh}
+    directory: ${BACKUP_DIR:backups}
+    retain-count: ${BACKUP_RETAIN_COUNT:10}
+    timeout-seconds: ${BACKUP_TIMEOUT_SECONDS:300}
+    cron: ${BACKUP_CRON:0 0 2 * * *}
+    zone: ${BACKUP_ZONE:Asia/Shanghai}
+    host: ${DB_HOST:localhost}
+    port: ${DB_PORT:3306}
+    database-name: ${DB_NAME:test}
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+  type-aliases-package: com.student.management
+
+logging:
+  level:
+    com.student.management: info
