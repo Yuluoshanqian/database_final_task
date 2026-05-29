@@ -72,7 +72,7 @@ public class AdminService {
                         item("学期选课开放状态", semesterPhaseText(selectionSemester, "选课中", "未开放选课")),
                         item("教务登分开放状态", semesterPhaseText(gradingSemester, "登分中", "未开放登分"))),
                 "systemStatus", systemStatus(),
-                "notices", commonMapper.listRecentNotices("admin", 5));
+                "notices", commonMapper.listRecentNotices("admin", 6));
     }
 
     /** 格式化阶段文本：学期名 + 后缀，无学期时显示回退文案。 */

@@ -3052,7 +3052,7 @@ function renderAdminDashboard() {
         </div>
         <section class="panel admin-notice-panel">
           <div class="panel-header"><div><h2>通知公告</h2><p>面向不同角色发布校内通知。</p></div><button class="btn" data-action="notice">查看全部</button></div>
-          ${noticeList(data.notices || state.catalog?.notices || [], { limit: 5 })}
+          ${noticeList(data.notices || state.catalog?.notices || [], { limit: 6 })}
         </section>
       </div>
     </div>
