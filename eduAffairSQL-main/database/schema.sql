@@ -1,250 +1,322 @@
-CREATE DATABASE IF NOT EXISTS test
-  DEFAULT CHARACTER SET utf8mb4
-  DEFAULT COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS test DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
 
 USE test;
 
 SET FOREIGN_KEY_CHECKS = 0;
+
 DROP PROCEDURE IF EXISTS sp_select_course;
+
 DROP PROCEDURE IF EXISTS sp_student_drop_course;
+
 DROP PROCEDURE IF EXISTS sp_admin_drop_course;
+
 DROP PROCEDURE IF EXISTS sp_admin_drop_enrollment;
+
 DROP PROCEDURE IF EXISTS sp_save_grade;
+
 DROP VIEW IF EXISTS grade_results;
+
 DROP VIEW IF EXISTS course_offering_stats;
+
 DROP TABLE IF EXISTS transaction_log_entries;
+
 DROP TABLE IF EXISTS transactions;
+
 DROP TABLE IF EXISTS backup_records;
+
 DROP TABLE IF EXISTS notices;
+
 DROP TABLE IF EXISTS grades;
+
 DROP TABLE IF EXISTS enrollments;
+
 DROP TABLE IF EXISTS course_offering_times;
+
 DROP TABLE IF EXISTS course_offerings;
+
 DROP TABLE IF EXISTS classrooms;
+
 DROP TABLE IF EXISTS courses;
+
 DROP TABLE IF EXISTS semester_active_phases;
+
 DROP TABLE IF EXISTS semesters;
+
 DROP TABLE IF EXISTS teachers;
+
 DROP TABLE IF EXISTS students;
+
 DROP TABLE IF EXISTS majors;
+
 DROP TABLE IF EXISTS departments;
+
 DROP TABLE IF EXISTS users;
+
 DROP TABLE IF EXISTS roles;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE roles (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  code VARCHAR(32) NOT NULL UNIQUE,
-  name VARCHAR(64) NOT NULL
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(32) NOT NULL UNIQUE,
+    name VARCHAR(64) NOT NULL
+) ENGINE = InnoDB;
 
 CREATE TABLE users (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
-  display_name VARCHAR(80) NOT NULL,
-  email VARCHAR(120) NOT NULL UNIQUE,
-  role_id BIGINT NOT NULL,
-  status ENUM('enabled','disabled') NOT NULL DEFAULT 'enabled',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(id)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(64) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    display_name VARCHAR(80) NOT NULL,
+    email VARCHAR(120) NOT NULL UNIQUE,
+    role_id BIGINT NOT NULL,
+    status ENUM('enabled', 'disabled') NOT NULL DEFAULT 'enabled',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles (id)
+) ENGINE = InnoDB;
 
 CREATE TABLE departments (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(80) NOT NULL UNIQUE,
-  phone VARCHAR(32) NULL
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(80) NOT NULL UNIQUE,
+    phone VARCHAR(32) NULL
+) ENGINE = InnoDB;
 
 CREATE TABLE majors (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  department_id BIGINT NOT NULL,
-  name VARCHAR(80) NOT NULL,
-  duration_years TINYINT NOT NULL DEFAULT 4,
-  CONSTRAINT fk_majors_department FOREIGN KEY (department_id) REFERENCES departments(id),
-  CONSTRAINT chk_majors_duration CHECK (duration_years BETWEEN 1 AND 8),
-  UNIQUE KEY uk_major_department_name (department_id, name)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    department_id BIGINT NOT NULL,
+    name VARCHAR(80) NOT NULL,
+    duration_years TINYINT NOT NULL DEFAULT 4,
+    CONSTRAINT fk_majors_department FOREIGN KEY (department_id) REFERENCES departments (id),
+    CONSTRAINT chk_majors_duration CHECK (
+        duration_years BETWEEN 1 AND 8
+    ),
+    UNIQUE KEY uk_major_department_name (department_id, name)
+) ENGINE = InnoDB;
 
 CREATE TABLE students (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT NOT NULL UNIQUE,
-  student_no VARCHAR(32) NOT NULL UNIQUE,
-  major_id BIGINT NOT NULL,
-  admission_year SMALLINT NOT NULL,
-  CONSTRAINT fk_students_user FOREIGN KEY (user_id) REFERENCES users(id),
-  CONSTRAINT fk_students_major FOREIGN KEY (major_id) REFERENCES majors(id),
-  CONSTRAINT chk_students_admission_year CHECK (admission_year BETWEEN 1900 AND 2100)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL UNIQUE,
+    student_no VARCHAR(32) NOT NULL UNIQUE,
+    major_id BIGINT NOT NULL,
+    admission_year SMALLINT NOT NULL,
+    CONSTRAINT fk_students_user FOREIGN KEY (user_id) REFERENCES users (id),
+    CONSTRAINT fk_students_major FOREIGN KEY (major_id) REFERENCES majors (id),
+    CONSTRAINT chk_students_admission_year CHECK (
+        admission_year BETWEEN 1900 AND 2100
+    )
+) ENGINE = InnoDB;
 
 CREATE TABLE teachers (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT NOT NULL UNIQUE,
-  teacher_no VARCHAR(32) NOT NULL UNIQUE,
-  department_id BIGINT NOT NULL,
-  title VARCHAR(64) NOT NULL DEFAULT '讲师',
-  CONSTRAINT fk_teachers_user FOREIGN KEY (user_id) REFERENCES users(id),
-  CONSTRAINT fk_teachers_department FOREIGN KEY (department_id) REFERENCES departments(id)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL UNIQUE,
+    teacher_no VARCHAR(32) NOT NULL UNIQUE,
+    department_id BIGINT NOT NULL,
+    title VARCHAR(64) NOT NULL DEFAULT '讲师',
+    CONSTRAINT fk_teachers_user FOREIGN KEY (user_id) REFERENCES users (id),
+    CONSTRAINT fk_teachers_department FOREIGN KEY (department_id) REFERENCES departments (id)
+) ENGINE = InnoDB;
 
 CREATE TABLE semesters (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL UNIQUE,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  max_credit DECIMAL(5,1) NOT NULL DEFAULT 30.0,
-  CONSTRAINT chk_semesters_date_range CHECK (start_date <= end_date),
-  CHECK (max_credit > 0)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(64) NOT NULL UNIQUE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    max_credit DECIMAL(5, 1) NOT NULL DEFAULT 30.0,
+    CONSTRAINT chk_semesters_date_range CHECK (start_date <= end_date),
+    CHECK (max_credit > 0)
+) ENGINE = InnoDB;
 
 CREATE TABLE semester_active_phases (
-  phase ENUM('selection', 'grading') PRIMARY KEY,
-  semester_id BIGINT NOT NULL UNIQUE,
-  CONSTRAINT fk_semester_active_phases_semester
-    FOREIGN KEY (semester_id) REFERENCES semesters(id)
-    ON DELETE CASCADE
-) ENGINE=InnoDB;
+    phase ENUM('selection', 'grading') PRIMARY KEY,
+    semester_id BIGINT NOT NULL UNIQUE,
+    CONSTRAINT fk_semester_active_phases_semester FOREIGN KEY (semester_id) REFERENCES semesters (id) ON DELETE CASCADE
+) ENGINE = InnoDB;
 
 CREATE TABLE courses (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  code VARCHAR(32) NOT NULL UNIQUE,
-  name VARCHAR(100) NOT NULL,
-  department_id BIGINT NOT NULL,
-  credit DECIMAL(3,1) NOT NULL,
-  status ENUM('enabled','disabled') NOT NULL DEFAULT 'enabled',
-  CONSTRAINT fk_courses_department FOREIGN KEY (department_id) REFERENCES departments(id),
-  CONSTRAINT chk_courses_credit CHECK (credit > 0)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(32) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    department_id BIGINT NOT NULL,
+    credit DECIMAL(3, 1) NOT NULL,
+    status ENUM('enabled', 'disabled') NOT NULL DEFAULT 'enabled',
+    CONSTRAINT fk_courses_department FOREIGN KEY (department_id) REFERENCES departments (id),
+    CONSTRAINT chk_courses_credit CHECK (credit > 0)
+) ENGINE = InnoDB;
 
 CREATE TABLE classrooms (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  building VARCHAR(64) NOT NULL,
-  room_no VARCHAR(32) NOT NULL,
-  UNIQUE KEY uk_room (building, room_no)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    building VARCHAR(64) NOT NULL,
+    room_no VARCHAR(32) NOT NULL,
+    UNIQUE KEY uk_room (building, room_no)
+) ENGINE = InnoDB;
 
 CREATE TABLE course_offerings (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  course_id BIGINT NOT NULL,
-  semester_id BIGINT NOT NULL,
-  teacher_id BIGINT NOT NULL,
-  capacity SMALLINT NOT NULL,
-  exam_ratio DECIMAL(4,2) NOT NULL DEFAULT 0.60,
-  status ENUM('selecting','closed','deleted') NOT NULL DEFAULT 'selecting',
-  CONSTRAINT fk_offerings_course FOREIGN KEY (course_id) REFERENCES courses(id),
-  CONSTRAINT fk_offerings_semester FOREIGN KEY (semester_id) REFERENCES semesters(id),
-  CONSTRAINT fk_offerings_teacher FOREIGN KEY (teacher_id) REFERENCES teachers(id),
-  CONSTRAINT chk_offerings_capacity CHECK (capacity > 0),
-  CONSTRAINT chk_offerings_exam_ratio
-  CHECK (
-    exam_ratio >= 0
-    AND exam_ratio <= 1
-  )
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    course_id BIGINT NOT NULL,
+    semester_id BIGINT NOT NULL,
+    teacher_id BIGINT NOT NULL,
+    capacity SMALLINT NOT NULL,
+    exam_ratio DECIMAL(4, 2) NOT NULL DEFAULT 0.60,
+    status ENUM(
+        'selecting',
+        'closed',
+        'deleted'
+    ) NOT NULL DEFAULT 'selecting',
+    CONSTRAINT fk_offerings_course FOREIGN KEY (course_id) REFERENCES courses (id),
+    CONSTRAINT fk_offerings_semester FOREIGN KEY (semester_id) REFERENCES semesters (id),
+    CONSTRAINT fk_offerings_teacher FOREIGN KEY (teacher_id) REFERENCES teachers (id),
+    CONSTRAINT chk_offerings_capacity CHECK (capacity > 0),
+    CONSTRAINT chk_offerings_exam_ratio CHECK (
+        exam_ratio >= 0
+        AND exam_ratio <= 1
+    )
+) ENGINE = InnoDB;
 
 CREATE TABLE course_offering_times (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  offering_id BIGINT NOT NULL,
-  classroom_id BIGINT NOT NULL,
-  day_of_week TINYINT NOT NULL COMMENT '1-7, Monday is 1',
-  start_section TINYINT NOT NULL,
-  end_section TINYINT NOT NULL,
-  start_week TINYINT NOT NULL DEFAULT 1,
-  end_week TINYINT NOT NULL DEFAULT 16,
-  week_type ENUM('all','odd','even') NOT NULL DEFAULT 'all' COMMENT 'all/odd/even',
-  CONSTRAINT fk_offering_times_offering FOREIGN KEY (offering_id) REFERENCES course_offerings(id) ON DELETE CASCADE,
-  CONSTRAINT fk_offering_times_room FOREIGN KEY (classroom_id) REFERENCES classrooms(id),
-  CHECK (day_of_week BETWEEN 1 AND 7),
-  CHECK (start_section BETWEEN 1 AND 12),
-  CHECK (end_section BETWEEN 1 AND 12),
-  CHECK (start_section <= end_section),
-  CHECK (start_week BETWEEN 1 AND 30),
-  CHECK (end_week BETWEEN 1 AND 30),
-  CHECK (start_week <= end_week),
-  INDEX idx_offering_times_lookup (offering_id, day_of_week, start_section, end_section),
-  INDEX idx_offering_times_room (classroom_id, day_of_week, start_section, end_section)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    offering_id BIGINT NOT NULL,
+    classroom_id BIGINT NOT NULL,
+    day_of_week TINYINT NOT NULL COMMENT '1-7, Monday is 1',
+    start_section TINYINT NOT NULL,
+    end_section TINYINT NOT NULL,
+    start_week TINYINT NOT NULL DEFAULT 1,
+    end_week TINYINT NOT NULL DEFAULT 16,
+    week_type ENUM('all', 'odd', 'even') NOT NULL DEFAULT 'all' COMMENT 'all/odd/even',
+    CONSTRAINT fk_offering_times_offering FOREIGN KEY (offering_id) REFERENCES course_offerings (id) ON DELETE CASCADE,
+    CONSTRAINT fk_offering_times_room FOREIGN KEY (classroom_id) REFERENCES classrooms (id),
+    CHECK (day_of_week BETWEEN 1 AND 7),
+    CHECK (
+        start_section BETWEEN 1 AND 12
+    ),
+    CHECK (end_section BETWEEN 1 AND 12),
+    CHECK (start_section <= end_section),
+    CHECK (start_week BETWEEN 1 AND 30),
+    CHECK (end_week BETWEEN 1 AND 30),
+    CHECK (start_week <= end_week),
+    INDEX idx_offering_times_lookup (
+        offering_id,
+        day_of_week,
+        start_section,
+        end_section
+    ),
+    INDEX idx_offering_times_room (
+        classroom_id,
+        day_of_week,
+        start_section,
+        end_section
+    )
+) ENGINE = InnoDB;
 
 CREATE TABLE enrollments (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  student_id BIGINT NOT NULL,
-  offering_id BIGINT NOT NULL,
-  status ENUM('selected','dropped') NOT NULL DEFAULT 'selected',
-  CONSTRAINT fk_enrollments_student FOREIGN KEY (student_id) REFERENCES students(id),
-  CONSTRAINT fk_enrollments_offering FOREIGN KEY (offering_id) REFERENCES course_offerings(id),
-  UNIQUE KEY uk_student_offering (student_id, offering_id),
-  INDEX idx_enrollments_offering_status (offering_id, status),
-  INDEX idx_enrollments_student_status (student_id, status)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    student_id BIGINT NOT NULL,
+    offering_id BIGINT NOT NULL,
+    status ENUM('selected', 'dropped') NOT NULL DEFAULT 'selected',
+    CONSTRAINT fk_enrollments_student FOREIGN KEY (student_id) REFERENCES students (id),
+    CONSTRAINT fk_enrollments_offering FOREIGN KEY (offering_id) REFERENCES course_offerings (id),
+    UNIQUE KEY uk_student_offering (student_id, offering_id),
+    INDEX idx_enrollments_offering_status (offering_id, status),
+    INDEX idx_enrollments_student_status (student_id, status)
+) ENGINE = InnoDB;
 
 CREATE TABLE grades (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  enrollment_id BIGINT NOT NULL UNIQUE,
-  usual_score DECIMAL(5,2) NULL,
-  exam_score DECIMAL(5,2) NULL,
-  updated_by BIGINT NULL,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_grades_enrollment FOREIGN KEY (enrollment_id) REFERENCES enrollments(id),
-  CONSTRAINT fk_grades_user FOREIGN KEY (updated_by) REFERENCES users(id),
-  CONSTRAINT chk_grades_usual_score CHECK (usual_score IS NULL OR usual_score BETWEEN 0 AND 100),
-  CONSTRAINT chk_grades_exam_score CHECK (exam_score IS NULL OR exam_score BETWEEN 0 AND 100)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    enrollment_id BIGINT NOT NULL UNIQUE,
+    usual_score DECIMAL(5, 2) NULL,
+    exam_score DECIMAL(5, 2) NULL,
+    updated_by BIGINT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_grades_enrollment FOREIGN KEY (enrollment_id) REFERENCES enrollments (id),
+    CONSTRAINT fk_grades_user FOREIGN KEY (updated_by) REFERENCES users (id),
+    CONSTRAINT chk_grades_usual_score CHECK (
+        usual_score IS NULL
+        OR usual_score BETWEEN 0 AND 100
+    ),
+    CONSTRAINT chk_grades_exam_score CHECK (
+        exam_score IS NULL
+        OR exam_score BETWEEN 0 AND 100
+    )
+) ENGINE = InnoDB;
 
 CREATE TABLE notices (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  title VARCHAR(120) NOT NULL,
-  content TEXT NOT NULL,
-  audience ENUM('all','teacher','student') NOT NULL DEFAULT 'all',
-  created_by BIGINT NOT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_notices_user FOREIGN KEY (created_by) REFERENCES users(id)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(120) NOT NULL,
+    content TEXT NOT NULL,
+    audience ENUM('all', 'teacher', 'student') NOT NULL DEFAULT 'all',
+    created_by BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_notices_user FOREIGN KEY (created_by) REFERENCES users (id)
+) ENGINE = InnoDB;
 
 CREATE TABLE transactions (
-  transaction_id CHAR(36) PRIMARY KEY,
-  business_type VARCHAR(64) NOT NULL,
-  actor_user_id BIGINT NULL,
-  started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  ended_at DATETIME NULL,
-  final_status ENUM('started','committed','rolled_back','failed') NOT NULL DEFAULT 'started',
-  CONSTRAINT fk_transactions_actor FOREIGN KEY (actor_user_id) REFERENCES users(id),
-  INDEX idx_transactions_started_at (started_at),
-  INDEX idx_transactions_actor (actor_user_id)
-) ENGINE=InnoDB;
+    transaction_id CHAR(36) PRIMARY KEY,
+    business_type VARCHAR(64) NOT NULL,
+    actor_user_id BIGINT NULL,
+    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at DATETIME NULL,
+    final_status ENUM(
+        'started',
+        'committed',
+        'rolled_back',
+        'failed'
+    ) NOT NULL DEFAULT 'started',
+    CONSTRAINT fk_transactions_actor FOREIGN KEY (actor_user_id) REFERENCES users (id),
+    INDEX idx_transactions_started_at (started_at),
+    INDEX idx_transactions_actor (actor_user_id)
+) ENGINE = InnoDB;
 
 CREATE TABLE transaction_log_entries (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  transaction_id CHAR(36) NOT NULL,
-  operation ENUM('START','INSERT','UPDATE','DELETE','UPSERT','COMMIT','ROLLBACK') NOT NULL,
-  table_name VARCHAR(64) NULL,
-  record_id BIGINT NULL,
-  status ENUM('started','success','failed','rolled_back') NOT NULL,
-  message TEXT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_transaction_log_entries_transaction
-    FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
-  INDEX idx_transaction_log_entries_tx (transaction_id, id),
-  INDEX idx_transaction_log_entries_created_at (created_at)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    transaction_id CHAR(36) NOT NULL,
+    operation ENUM(
+        'START',
+        'INSERT',
+        'UPDATE',
+        'DELETE',
+        'UPSERT',
+        'COMMIT',
+        'ROLLBACK'
+    ) NOT NULL,
+    table_name VARCHAR(64) NULL,
+    record_id BIGINT NULL,
+    status ENUM(
+        'started',
+        'success',
+        'failed',
+        'rolled_back'
+    ) NOT NULL,
+    message TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_transaction_log_entries_transaction FOREIGN KEY (transaction_id) REFERENCES transactions (transaction_id),
+    INDEX idx_transaction_log_entries_tx (transaction_id, id),
+    INDEX idx_transaction_log_entries_created_at (created_at)
+) ENGINE = InnoDB;
 
 CREATE TABLE backup_records (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  database_name VARCHAR(64) NOT NULL,
-  file_name VARCHAR(255) NOT NULL,
-  backup_directory VARCHAR(512) NOT NULL,
-  file_size_bytes BIGINT NULL,
-  status ENUM('started','success','failed','deleted') NOT NULL DEFAULT 'started',
-  trigger_type ENUM('scheduled','manual') NOT NULL DEFAULT 'scheduled',
-  created_by BIGINT NULL,
-  started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  ended_at DATETIME NULL,
-  message TEXT NULL,
-  CONSTRAINT fk_backup_records_user FOREIGN KEY (created_by) REFERENCES users(id),
-  CONSTRAINT chk_backup_records_file_size CHECK (file_size_bytes IS NULL OR file_size_bytes >= 0),
-  UNIQUE KEY uk_backup_records_database_file (database_name, file_name),
-  INDEX idx_backup_records_started_at (started_at),
-  INDEX idx_backup_records_status (status)
-) ENGINE=InnoDB;
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    database_name VARCHAR(64) NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    backup_directory VARCHAR(512) NOT NULL,
+    file_size_bytes BIGINT NULL,
+    status ENUM(
+        'started',
+        'success',
+        'failed',
+        'deleted'
+    ) NOT NULL DEFAULT 'started',
+    trigger_type ENUM('scheduled', 'manual') NOT NULL DEFAULT 'scheduled',
+    created_by BIGINT NULL,
+    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at DATETIME NULL,
+    message TEXT NULL,
+    CONSTRAINT fk_backup_records_user FOREIGN KEY (created_by) REFERENCES users (id),
+    CONSTRAINT chk_backup_records_file_size CHECK (
+        file_size_bytes IS NULL
+        OR file_size_bytes >= 0
+    ),
+    UNIQUE KEY uk_backup_records_database_file (database_name, file_name),
+    INDEX idx_backup_records_started_at (started_at),
+    INDEX idx_backup_records_status (status)
+) ENGINE = InnoDB;
 
 DELIMITER $$
 
@@ -512,47 +584,57 @@ BEGIN
 END$$
 
 CREATE VIEW course_offering_stats AS
-SELECT co.id, co.course_id, co.semester_id, co.teacher_id,
-       co.capacity, co.exam_ratio, co.status,
-       COALESCE(selection_counts.selected_count, 0) AS selected_count
-  FROM course_offerings co
-  LEFT JOIN (
+SELECT co.id, co.course_id, co.semester_id, co.teacher_id, co.capacity, co.exam_ratio, co.status, COALESCE(
+        selection_counts.selected_count, 0
+    ) AS selected_count
+FROM
+    course_offerings co
+    LEFT JOIN (
         SELECT offering_id, COUNT(*) AS selected_count
-          FROM enrollments
-         WHERE status = 'selected'
-         GROUP BY offering_id
-       ) selection_counts ON selection_counts.offering_id = co.id$$
+        FROM enrollments
+        WHERE
+            status = 'selected'
+        GROUP BY
+            offering_id
+    ) selection_counts ON selection_counts.offering_id = co.id$$
 
 CREATE VIEW grade_results AS
-SELECT scored.id, scored.enrollment_id, scored.usual_score, scored.exam_score,
-       scored.final_score,
-       CASE
-         WHEN scored.final_score IS NULL THEN NULL
-         WHEN scored.final_score >= 90 THEN 4.0
-         WHEN scored.final_score >= 85 THEN 3.7
-         WHEN scored.final_score >= 82 THEN 3.3
-         WHEN scored.final_score >= 78 THEN 3.0
-         WHEN scored.final_score >= 75 THEN 2.7
-         WHEN scored.final_score >= 72 THEN 2.3
-         WHEN scored.final_score >= 68 THEN 2.0
-         WHEN scored.final_score >= 66 THEN 1.7
-         WHEN scored.final_score >= 64 THEN 1.5
-         WHEN scored.final_score >= 60 THEN 1.0
-         ELSE 0.0
-       END AS grade_point,
-       scored.updated_by, scored.updated_at
-  FROM (
-        SELECT g.id, g.enrollment_id, g.usual_score, g.exam_score,
-               CASE
-                 WHEN g.usual_score IS NOT NULL AND g.exam_score IS NOT NULL
-                 THEN ROUND(g.usual_score * (1 - co.exam_ratio) + g.exam_score * co.exam_ratio, 0)
-                 ELSE NULL
-               END AS final_score,
-               g.updated_by, g.updated_at
-          FROM grades g
-          JOIN enrollments e ON e.id = g.enrollment_id
-          JOIN course_offerings co ON co.id = e.offering_id
-       ) scored$$
+SELECT
+    scored.id,
+    scored.enrollment_id,
+    scored.usual_score,
+    scored.exam_score,
+    scored.final_score,
+    CASE
+        WHEN scored.final_score IS NULL THEN NULL
+        WHEN scored.final_score >= 90 THEN 4.0
+        WHEN scored.final_score >= 85 THEN 3.7
+        WHEN scored.final_score >= 82 THEN 3.3
+        WHEN scored.final_score >= 78 THEN 3.0
+        WHEN scored.final_score >= 75 THEN 2.7
+        WHEN scored.final_score >= 72 THEN 2.3
+        WHEN scored.final_score >= 68 THEN 2.0
+        WHEN scored.final_score >= 66 THEN 1.7
+        WHEN scored.final_score >= 64 THEN 1.5
+        WHEN scored.final_score >= 60 THEN 1.0
+        ELSE 0.0
+    END AS grade_point,
+    scored.updated_by,
+    scored.updated_at
+FROM (
+        SELECT
+            g.id, g.enrollment_id, g.usual_score, g.exam_score, CASE
+                WHEN g.usual_score IS NOT NULL
+                AND g.exam_score IS NOT NULL THEN ROUND(
+                    g.usual_score * (1 - co.exam_ratio) + g.exam_score * co.exam_ratio, 0
+                )
+                ELSE NULL
+            END AS final_score, g.updated_by, g.updated_at
+        FROM
+            grades g
+            JOIN enrollments e ON e.id = g.enrollment_id
+            JOIN course_offerings co ON co.id = e.offering_id
+    ) scored$$
 
 -- Business lock order is fixed to reduce deadlocks:
 -- students -> semester_active_phases -> course_offerings -> enrollments -> grades.
@@ -1223,9 +1305,10 @@ BEGIN
   COMMIT;
 END$$
 
-DELIMITER ;
+DELIMITER;
 
 DELIMITER $$
+
 CREATE TRIGGER trg_notices_admin_insert
 BEFORE INSERT ON notices
 FOR EACH ROW
@@ -1255,4 +1338,5 @@ BEGIN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only administrators can publish notices';
   END IF;
 END$$
-DELIMITER ;
+
+DELIMITER;
